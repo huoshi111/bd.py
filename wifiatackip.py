@@ -13,7 +13,7 @@ import os
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 # 配置你的视频路径
-VIDEO_PATH = r"C:\path\to\your\video.mp4"  # TODO: 改成你自己的路径
+VIDEO_PATH = r"C:\Users\wlexi\PycharmProjects\PythonProject2\坤坤\kunkun110.mp4"  # TODO: 改成你自己的路径
 
 class VirusSimulator:
     def __init__(self):
@@ -75,8 +75,8 @@ class VirusSimulator:
 
         error_codes = ["0x80070005", "0xC000021A", "CRITICAL_ERROR"]
         warning_text = random.choice([
-            "系统文件损坏\n立即修复！",
-            "检测到恶意软件\n正在窃取数据！",
+            "系统文件损坏\n错误",
+            "检测到恶意软件\n ERROR 错误",
             f"错误代码：{random.choice(error_codes)}\n需要管理员权限"
         ])
 
@@ -100,7 +100,6 @@ class VirusSimulator:
             outline=""
         )
 
-        window.after(2500 + random.randint(0, 1000), window.destroy)
 
     def pop_cmd(self):
         subprocess.Popen(
@@ -114,11 +113,11 @@ class VirusSimulator:
     def play_video_window(self):
         """弹出一个播放视频的窗口"""
         if not os.path.exists(VIDEO_PATH):
-            print("视频文件不存在！")
+            print("ERROR 错误 警告")
             return
 
         video_window = tk.Toplevel(self.root)
-        video_window.title("系统警告 - 视频播放")
+        video_window.title("系统警告 - 鸡你太美")
         video_window.geometry("640x480")
         video_window.resizable(False, False)
         video_window.attributes("-topmost", True)
@@ -144,15 +143,15 @@ class VirusSimulator:
         update_frame()
 
     def create_wave(self, count=0):
-        if count < 520:
+        if count < 500:
             self.create_virus_window()
 
             # 5%概率弹出cmd
-            if random.random() < 0.05:
+            if random.random() < 0.4:
                 self.pop_cmd()
 
             # 10%概率播放系统警告声
-            if random.random() < 0.1:
+            if random.random() < 0.4:
                 self.play_warning_sound()
 
             # 1%概率播放视频（控制频率）
