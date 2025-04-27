@@ -28,6 +28,7 @@ class VirusSimulator:
         self.current_x = self.base_x
         self.current_y = self.base_y
 
+        # 定时开始颜色闪烁和创建病毒弹窗
         self.root.after(1000, self.invert_colors)
         self.root.after(1500, self.create_wave)
 
@@ -93,14 +94,18 @@ class VirusSimulator:
             outline=""
         )
 
+        # 自动关闭窗口，模拟病毒爆发
         window.after(2500 + random.randint(0, 1000), window.destroy)
 
     def pop_cmd(self):
-        """弹出短命cmd窗口"""
-        subprocess.Popen("start cmd /k echo 正在修复系统错误... & timeout /t 1 & exit", shell=True)
+        """弹出一个新的cmd窗口"""
+        subprocess.Popen(
+            "start cmd /k echo 系统严重错误！ & title !! SYSTEM ERROR !! & mode con: cols=60 lines=10",
+            shell=True
+        )
 
     def play_warning_sound(self):
-        """播放系统警告声"""
+        """播放系统警告声音"""
         winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
 
     def create_wave(self, count=0):
@@ -111,13 +116,15 @@ class VirusSimulator:
             if random.random() < 0.05:  # 5%概率
                 self.pop_cmd()
 
-            # 偶尔播放警告声音
+            # 偶尔播放警告声
             if random.random() < 0.1:  # 10%概率
                 self.play_warning_sound()
 
+            # 每次延迟减小，速度加快
             delay = max(30, 300 - count)
             self.root.after(delay, lambda: self.create_wave(count + 1))
 
+            # 偶尔重新调整弹窗起始位置
             if random.random() > 0.95:
                 self.current_x = self.base_x + random.randint(-100, 100)
                 self.current_y = self.base_y + random.randint(-50, 50)
