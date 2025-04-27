@@ -4,9 +4,16 @@ import random
 import ctypes
 import subprocess
 import winsound
+import threading
+import cv2
+from PIL import Image, ImageTk
+import os
 
 # 启用Windows 10的高DPI支持
 ctypes.windll.shcore.SetProcessDpiAwareness(1)
+
+# 配置你的视频路径
+VIDEO_PATH = r"C:\path\to\your\video.mp4"  # TODO: 改成你自己的路径
 
 class VirusSimulator:
     def __init__(self):
@@ -28,7 +35,6 @@ class VirusSimulator:
         self.current_x = self.base_x
         self.current_y = self.base_y
 
-        # 定时开始颜色闪烁和创建病毒弹窗
         self.root.after(1000, self.invert_colors)
         self.root.after(1500, self.create_wave)
 
@@ -94,37 +100,68 @@ class VirusSimulator:
             outline=""
         )
 
-        # 自动关闭窗口，模拟病毒爆发
         window.after(2500 + random.randint(0, 1000), window.destroy)
 
     def pop_cmd(self):
-        """弹出一个新的cmd窗口"""
         subprocess.Popen(
             "start cmd /k echo 系统严重错误！ & title !! SYSTEM ERROR !! & mode con: cols=60 lines=10",
             shell=True
         )
 
     def play_warning_sound(self):
-        """播放系统警告声音"""
         winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
+
+    def play_video_window(self):
+        """弹出一个播放视频的窗口"""
+        if not os.path.exists(VIDEO_PATH):
+            print("视频文件不存在！")
+            return
+
+        video_window = tk.Toplevel(self.root)
+        video_window.title("系统警告 - 视频播放")
+        video_window.geometry("640x480")
+        video_window.resizable(False, False)
+        video_window.attributes("-topmost", True)
+
+        canvas = tk.Canvas(video_window, width=640, height=480)
+        canvas.pack()
+
+        cap = cv2.VideoCapture(VIDEO_PATH)
+
+        def update_frame():
+            ret, frame = cap.read()
+            if ret:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                img = Image.fromarray(frame)
+                imgtk = ImageTk.PhotoImage(image=img)
+                canvas.create_image(0, 0, anchor="nw", image=imgtk)
+                canvas.imgtk = imgtk
+                video_window.after(30, update_frame)
+            else:
+                cap.release()
+                video_window.destroy()
+
+        update_frame()
 
     def create_wave(self, count=0):
         if count < 520:
             self.create_virus_window()
 
-            # 偶尔弹出cmd窗口
-            if random.random() < 0.05:  # 5%概率
+            # 5%概率弹出cmd
+            if random.random() < 0.05:
                 self.pop_cmd()
 
-            # 偶尔播放警告声
-            if random.random() < 0.1:  # 10%概率
+            # 10%概率播放系统警告声
+            if random.random() < 0.1:
                 self.play_warning_sound()
 
-            # 每次延迟减小，速度加快
+            # 1%概率播放视频（控制频率）
+            if random.random() < 0.01:
+                threading.Thread(target=self.play_video_window).start()
+
             delay = max(30, 300 - count)
             self.root.after(delay, lambda: self.create_wave(count + 1))
 
-            # 偶尔重新调整弹窗起始位置
             if random.random() > 0.95:
                 self.current_x = self.base_x + random.randint(-100, 100)
                 self.current_y = self.base_y + random.randint(-50, 50)
