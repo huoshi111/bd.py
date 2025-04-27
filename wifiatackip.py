@@ -1,131 +1,114 @@
 import tkinter as tk
-import subprocess
-import threading
-import ctypes
-import time
+from tkinter import font
 import random
-from ctypes import wintypes
+import ctypes
 
-# Windows API初始化
-user32 = ctypes.WinDLL('user32', use_last_error=True)
-gdi32 = ctypes.WinDLL('gdi32', use_last_error=True)
+# 启用Windows 10的高DPI支持
+ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
-# 定义Windows常量
-SPI_SETDESKWALLPAPER = 0x0014
-SPIF_UPDATEINIFILE = 0x01
-SPIF_SENDCHANGE = 0x02
-SWP_NOSIZE = 0x0001
-SWP_NOZORDER = 0x0004
-
-class SystemHacker:
+class VirusSimulator:
     def __init__(self):
-        self.running = False
-        self.cmd_count = 0
-        self.color_inverted = False
-        self.original_color = self.get_system_color()
-
-        # 创建隐藏控制窗口
         self.root = tk.Tk()
         self.root.withdraw()
-        self.root.protocol("WM_DELETE_WINDOW", self.safe_exit)
+        
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
+        
+        self.color_inverted = False
+        self.original_bg = "#f0f0f0"
+        self.original_fg = "#000000"
+        self.inverted_bg = "#1a1a1a"
+        self.inverted_fg = "#ffffff"
+        
+        self.base_x = 100
+        self.base_y = 100
+        self.offset = 35
+        self.current_x = self.base_x
+        self.current_y = self.base_y
+        
+        self.root.after(1000, self.invert_colors)
+        self.root.after(1500, self.create_wave)
 
-        # 安全计数器
-        self.safety_counter = 0
-        self.max_operations = 100  # 最大操作次数限制
-
-    def get_system_color(self):
-        # 简化实现，实际上是伪装的白色
-        return 0xFFFFFF
-
-    def invert_system_colors(self):
-        # 伪装改变颜色（不是真正反转屏幕颜色）
+    def get_current_colors(self):
+        return (self.inverted_bg, self.inverted_fg) if self.color_inverted else (self.original_bg, self.original_fg)
+    
+    def invert_colors(self):
         self.color_inverted = not self.color_inverted
-        # 这里可以添加真实操作，比如改变主题，壁纸什么的
-        # 但为了安全，这里我们只是切换标志位
+        self.root.after(800, self.invert_colors)
+    
+    def calculate_position(self):
+        self.current_x += self.offset
+        self.current_y += int(self.offset * 0.8)
+        
+        if self.current_x > self.screen_width - 300:
+            self.current_x = self.base_x + random.randint(-20, 20)
+        if self.current_y > self.screen_height - 200:
+            self.current_y = self.base_y + random.randint(-20, 20)
+        
+        return self.current_x, self.current_y
+    
+    def create_virus_window(self):
+        bg_color, fg_color = self.get_current_colors()
+        
+        window = tk.Toplevel(self.root)
+        window.overrideredirect(1)
+        window.attributes("-topmost", True)
+        
+        x, y = self.calculate_position()
+        window.geometry(f"300x150+{x}+{y}")
+        
+        canvas = tk.Canvas(window, bg=bg_color, highlightthickness=0)
+        canvas.pack(fill=tk.BOTH, expand=True)
+        
+        canvas.create_oval(20, 20, 50, 50,
+                           fill="#ff4444" if random.random() > 0.5 else "#44ff44",
+                           outline="")
+        
+        error_codes = ["0x80070005", "0xC000021A", "CRITICAL_ERROR"]
+        warning_text = random.choice([
+            "系统文件损坏\n立即修复！",
+            "检测到恶意软件\n正在窃取数据！",
+            f"错误代码：{random.choice(error_codes)}\n需要管理员权限"
+        ])
+        
+        sys_font = font.nametofont("TkDefaultFont")
+        canvas.create_text(
+            80, 40,
+            text=warning_text,
+            fill=fg_color,
+            font=(sys_font.actual()["family"], 10, "bold"),
+            anchor="w"
+        )
+        
+        canvas.create_rectangle(
+            20, 110, 280, 130,
+            outline=fg_color,
+            fill=bg_color
+        )
+        canvas.create_rectangle(
+            22, 112, 22 + random.randint(50, 250), 128,
+            fill="#ff0000" if self.color_inverted else "#00ff00",
+            outline=""
+        )
+        
+        window.after(2500 + random.randint(0, 1000), window.destroy)
+    
+    def create_wave(self, count=0):
+        if count < 520:
+            self.create_virus_window()  # 每次只弹出一个窗口
+            
+            # 随着时间增加，弹出速度加快
+            delay = max(30, 300 - count)  # 初始慢慢弹，后面越来越快
+            self.root.after(delay, lambda: self.create_wave(count + 1))
+            
+            # 偶尔改变扩散起点，模拟病毒蔓延不规律
+            if random.random() > 0.95:
+                self.current_x = self.base_x + random.randint(-100, 100)
+                self.current_y = self.base_y + random.randint(-50, 50)
 
-    def create_cmd(self):
-        while self.running and self.safety_counter < self.max_operations:
-            try:
-                x = random.randint(0, user32.GetSystemMetrics(0) - 200)
-                y = random.randint(0, user32.GetSystemMetrics(1) - 100)
-
-                color_code = "4F" if self.color_inverted else "2E"
-                title = f"系统警告_{self.cmd_count}"
-
-                # 创建cmd窗口，隐藏主cmd窗口只弹出子窗口
-                subprocess.Popen(
-                    f'start "" /MIN cmd.exe /K "mode con: cols=40 lines=10 && title {title} && color {color_code}"',
-                    shell=True,
-                    creationflags=subprocess.CREATE_NEW_CONSOLE
-                )
-
-                time.sleep(0.3)  # 给系统一点反应时间
-
-                # 定位窗口
-                hwnd = user32.FindWindowW(None, title)
-                if hwnd:
-                    user32.SetWindowPos(hwnd, 0, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER)
-
-                self.cmd_count += 1
-                self.safety_counter += 1
-                time.sleep(0.5 + random.uniform(0, 0.5))
-            except Exception as e:
-                print(f"[create_cmd 错误]: {e}")
-                break
-
-    def color_thread(self):
-        while self.running and self.safety_counter < self.max_operations:
-            try:
-                self.invert_system_colors()
-                self.safety_counter += 1
-                time.sleep(1.0 + random.uniform(0, 0.5))
-            except Exception as e:
-                print(f"[color_thread 错误]: {e}")
-                break
-
-    def start_attack(self):
-        if not self.running:
-            self.running = True
-
-            # 启动子线程
-            threading.Thread(target=self.create_cmd, daemon=True).start()
-            threading.Thread(target=self.color_thread, daemon=True).start()
-
-            # 60秒后自动退出
-            self.root.after(60000, self.safe_exit)
-            self.root.mainloop()
-
-    def safe_exit(self):
-        if not self.running:
-            return
-        self.running = False
-
-        try:
-            # 恢复颜色
-            if self.color_inverted:
-                self.invert_system_colors()
-
-            # 关闭自己的cmd窗口（更安全，只杀有特定标题的）
-            for i in range(self.cmd_count):
-                title = f"系统警告_{i}"
-                hwnd = user32.FindWindowW(None, title)
-                if hwnd:
-                    user32.PostMessageW(hwnd, 0x0010, 0, 0)  # 发送WM_CLOSE消息
-        except Exception as e:
-            print(f"[safe_exit 错误]: {e}")
-        finally:
-            self.root.quit()
-            self.root.destroy()
+    def run(self):
+        self.root.mainloop()
 
 if __name__ == "__main__":
-    print("警告：此程序可能影响系统稳定性，请谨慎运行！")
-    confirm = input("确实要运行吗？(输入 'I_ACCEPT_RISKS' 继续): ")
-
-    if confirm == "I_ACCEPT_RISKS":
-        hacker = SystemHacker()
-        try:
-            hacker.start_attack()
-        except KeyboardInterrupt:
-            hacker.safe_exit()
-    else:
-        print("操作已取消。")
+    simulator = VirusSimulator()
+    simulator.run()
